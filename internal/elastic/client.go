@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 
@@ -140,6 +141,9 @@ func (c *Client) BulkIndex(indexName string, places []models.Place) error {
 				mu.Unlock()
 				return
 			}
+
+			// Логируем прогресс
+			log.Printf("Processed batch %d/%d", batchIndex+1, numBatches)
 		}(i)
 	}
 
