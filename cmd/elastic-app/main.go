@@ -67,13 +67,13 @@ func main() {
 		}
 
 		// Преобразуем CSV в JSON
-		documents, err := utils.CSVToJSON(records)
+		places, err := utils.CSVToJSON(records)
 		if err != nil {
 			log.Fatalf("Failed to convert CSV to JSON: %s", err)
 		}
 
 		// Загружаем данные в Elasticsearch
-		if err := client.BulkIndex("places", documents); err != nil {
+		if err := client.BulkIndex("places", places); err != nil {
 			log.Fatalf("Failed to load data: %s", err)
 		}
 		log.Println("Data loaded successfully!")

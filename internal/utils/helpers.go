@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"Go_Day03/internal/models"
 	"encoding/csv"
 	"fmt"
 	"os"
@@ -32,49 +33,41 @@ func ReadCSV(filePath string) ([][]string, error) {
 	return records, nil
 }
 
-// CSVToJSON преобразует записи CSV в JSON-документы.
-func CSVToJSON(records [][]string) ([]map[string]interface{}, error) {
-	var documents []map[string]interface{}
-
-	// Заголовки
-	headers := []string{"id", "name", "address", "phone", "lon", "lat"}
+// CSVToJSON преобразует записи CSV в слайс структур Place.
+func CSVToJSON(records [][]string) ([]models.Place, error) {
+	var places []models.Place
 
 	for _, record := range records {
-		doc := make(map[string]interface{})
-		for i, value := range record {
-			doc[headers[i]] = value
-		}
+		// Создаем структуру Place
+		place := models.Place{}
 
-		// Преобразуем id в uint64
-		id, err := strconv.ParseUint(doc["id"].(string), 10, 64)
+		// Преобразуем id в int
+		id, err := strconv.Atoi(record[0])
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert id: %s", err)
 		}
-		doc["id"] = id
+		place.ID = id
+
+		// Заполняем остальные поля
+		place.Name = record[1]
+		place.Address = record[2]
+		place.Phone = record[3]
 
 		// Преобразуем lat и lon в float64
-		lat, err := strconv.ParseFloat(doc["lat"].(string), 64)
+		lat, err := strconv.ParseFloat(record[5], 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert lat: %s", err)
 		}
+		place.Location.Lat = lat
 
-		lon, err := strconv.ParseFloat(doc["lon"].(string), 64)
+		lon, err := strconv.ParseFloat(record[4], 64)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert lon: %s", err)
 		}
+		place.Location.Lon = lon
 
-		// Добавляем location как geo_point
-		doc["location"] = map[string]float64{
-			"lat": lat,
-			"lon": lon,
-		}
-
-		// Удаляем lat и lon из документа
-		delete(doc, "lat")
-		delete(doc, "lon")
-
-		documents = append(documents, doc)
+		places = append(places, place)
 	}
 
-	return documents, nil
+	return places, nil
 }
