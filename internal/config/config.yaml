@@ -1,0 +1,23 @@
+elasticsearch:
+  address: "http://localhost:9200"
+  index: "places"
+  mapping:
+    properties:
+      id:
+        type: "unsigned_long"
+      name:
+        type: "text"
+      address:
+        type: "text"
+      phone:
+        type: "text"
+      location:
+        type: "geo_point"
+
+csv:
+  file_path: "data.csv"
+  delimiter: "\t"
+
+general:
+  batch_size: 1000
+  log_level: "info"

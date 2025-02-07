@@ -1,7 +1,7 @@
-package elastic
+package elasticsearch
 
 import (
-	"Go_Day03/internal/models"
+	"Go_Day03/internal/entities"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -9,6 +9,7 @@ import (
 	"log"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/elastic/go-elasticsearch/v8"
 	"github.com/elastic/go-elasticsearch/v8/esapi"
@@ -18,8 +19,11 @@ type Client struct {
 	es *elasticsearch.Client
 }
 
-func NewClient() (*Client, error) {
-	es, err := elasticsearch.NewDefaultClient()
+func NewClient(address string) (*Client, error) {
+	cfg := elasticsearch.Config{
+		Addresses: []string{address},
+	}
+	es, err := elasticsearch.NewClient(cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Elasticsearch client: %s", err)
 	}
@@ -63,21 +67,29 @@ func (c *Client) AddMapping(indexName string, mapping string) error {
 	return nil
 }
 
-// Индексирует несколько документов с помощью Bulk API и горутин
-func (c *Client) BulkIndex(indexName string, places []models.Place) error {
+func (c *Client) BulkIndex(indexName string, places []entities.Place) error {
+	const (
+		batchSize     = 1000            // Размер пакета
+		maxRetries    = 3               // Максимальное количество попыток
+		retryDelay    = 2 * time.Second // Задержка между попытками
+		maxGoroutines = 10              // Максимальное количество горутин
+	)
+
 	var (
 		wg         sync.WaitGroup
-		mu         sync.Mutex
-		errors     []error
-		batchSize  = 1000 // Размер пакета у каждого запроса
 		numBatches = (len(places) + batchSize - 1) / batchSize
+		errCh      = make(chan error, numBatches)
 	)
+
+	guard := make(chan struct{}, maxGoroutines)
 
 	for i := 0; i < numBatches; i++ {
 		wg.Add(1)
+		guard <- struct{}{}
 
 		go func(batchIndex int) {
 			defer wg.Done()
+			defer func() { <-guard }()
 
 			start := batchIndex * batchSize
 			end := start + batchSize
@@ -89,7 +101,6 @@ func (c *Client) BulkIndex(indexName string, places []models.Place) error {
 
 			var body bytes.Buffer
 			for _, place := range batch {
-				// Операция "index" для каждого документа
 				meta := map[string]interface{}{
 					"index": map[string]interface{}{
 						"_index": indexName,
@@ -99,21 +110,16 @@ func (c *Client) BulkIndex(indexName string, places []models.Place) error {
 
 				metaJSON, err := json.Marshal(meta)
 				if err != nil {
-					mu.Lock()
-					errors = append(errors, fmt.Errorf("failed to serialize meta: %s", err))
-					mu.Unlock()
+					errCh <- fmt.Errorf("batch %d: failed to serialize meta: %s", batchIndex, err)
 					return
 				}
 
 				body.Write(metaJSON)
 				body.WriteString("\n")
 
-				// Сам документ
 				docJSON, err := json.Marshal(place)
 				if err != nil {
-					mu.Lock()
-					errors = append(errors, fmt.Errorf("failed to serialize document: %s", err))
-					mu.Unlock()
+					errCh <- fmt.Errorf("batch %d: failed to serialize document: %s", batchIndex, err)
 					return
 				}
 
@@ -121,33 +127,37 @@ func (c *Client) BulkIndex(indexName string, places []models.Place) error {
 				body.WriteString("\n")
 			}
 
-			// Выполняем Bulk-запрос
 			req := esapi.BulkRequest{
 				Body: &body,
 			}
 
-			res, err := req.Do(context.Background(), c.es)
-			if err != nil {
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("failed to execute Bulk request: %s", err))
-				mu.Unlock()
-				return
-			}
-			defer res.Body.Close()
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			defer cancel()
 
-			if res.IsError() {
-				mu.Lock()
-				errors = append(errors, fmt.Errorf("error in response: %s", res.String()))
-				mu.Unlock()
-				return
+			for attempt := 1; attempt <= maxRetries; attempt++ {
+				res, err := req.Do(ctx, c.es)
+				if err == nil && !res.IsError() {
+					break
+				}
+
+				if attempt < maxRetries {
+					time.Sleep(retryDelay)
+				} else {
+					errCh <- fmt.Errorf("batch %d: failed after %d attempts: %s", batchIndex, maxRetries, err)
+				}
 			}
 
-			// Логируем прогресс
 			log.Printf("Processed batch %d/%d", batchIndex+1, numBatches)
 		}(i)
 	}
 
 	wg.Wait()
+	close(errCh)
+
+	var errors []error
+	for err := range errCh {
+		errors = append(errors, err)
+	}
 
 	if len(errors) > 0 {
 		return fmt.Errorf("encountered %d errors during bulk indexing: %v", len(errors), errors)
