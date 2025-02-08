@@ -3,42 +3,55 @@ package usecases
 import (
 	"Go_Day03/internal/interfaces/csv"
 	"Go_Day03/internal/interfaces/elastic"
+	"Go_Day03/internal/interfaces/logger"
 	"fmt"
-	"log"
 )
 
 type LoadDataUseCase struct {
 	elasticClient elastic.ElasticClient
 	csvReader     csv.CSVReader
+	logger        logger.Logger
 	indexName     string
 }
 
-func NewLoadDataUseCase(elasticClient elastic.ElasticClient, csvReader csv.CSVReader, indexName string) *LoadDataUseCase {
+func NewLoadDataUseCase(elasticClient elastic.ElasticClient, csvReader csv.CSVReader, logger logger.Logger, indexName string) *LoadDataUseCase {
 	return &LoadDataUseCase{
 		elasticClient: elasticClient,
 		csvReader:     csvReader,
+		logger:        logger,
 		indexName:     indexName,
 	}
 }
 
 func (uc *LoadDataUseCase) Execute(csvFile string) error {
-	// Читаем CSV-файл
+	uc.logger.Info("Reading CSV file")
 	records, err := uc.csvReader.ReadCSV(csvFile)
 	if err != nil {
+		uc.logger.WithFields(map[string]interface{}{
+			"file": csvFile,
+		}).Errorf("Failed to read CSV: %s", err)
 		return fmt.Errorf("failed to read CSV: %s", err)
 	}
 
-	// Преобразуем CSV в JSON (структуры Place)
+	uc.logger.Info("Converting CSV to JSON")
 	places, err := uc.csvReader.CSVToJSON(records)
 	if err != nil {
+		uc.logger.WithFields(map[string]interface{}{
+			"file": csvFile,
+		}).Errorf("Failed to convert CSV to JSON: %s", err)
 		return fmt.Errorf("failed to convert CSV to JSON: %s", err)
 	}
 
-	// Загружаем данные в Elasticsearch
+	uc.logger.WithFields(map[string]interface{}{
+		"index": uc.indexName,
+	}).Info("Loading data into Elasticsearch")
 	if err := uc.elasticClient.BulkIndex(uc.indexName, places); err != nil {
+		uc.logger.WithFields(map[string]interface{}{
+			"index": uc.indexName,
+		}).Errorf("Failed to load data: %s", err)
 		return fmt.Errorf("failed to load data: %s", err)
 	}
 
-	log.Println("Data loaded successfully!")
+	uc.logger.Info("Data loaded successfully")
 	return nil
 }

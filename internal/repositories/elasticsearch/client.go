@@ -2,11 +2,11 @@ package elasticsearch
 
 import (
 	"Go_Day03/internal/entities"
+	"Go_Day03/internal/logger"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"strings"
 	"sync"
 	"time"
@@ -16,10 +16,11 @@ import (
 )
 
 type Client struct {
-	es *elasticsearch.Client
+	es     *elasticsearch.Client
+	logger *logger.LogrusLogger
 }
 
-func NewClient(address string) (*Client, error) {
+func NewClient(address string, logger *logger.LogrusLogger) (*Client, error) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{address},
 	}
@@ -27,7 +28,7 @@ func NewClient(address string) (*Client, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Elasticsearch client: %s", err)
 	}
-	return &Client{es: es}, nil
+	return &Client{es: es, logger: logger}, nil
 }
 
 func (c *Client) CreateIndex(indexName string) error {
@@ -147,7 +148,7 @@ func (c *Client) BulkIndex(indexName string, places []entities.Place) error {
 				}
 			}
 
-			log.Printf("Processed batch %d/%d", batchIndex+1, numBatches)
+			c.logger.Info(fmt.Sprintf("Processed batch %d/%d", batchIndex+1, numBatches))
 		}(i)
 	}
 
