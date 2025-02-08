@@ -45,6 +45,7 @@ func (uc *LoadDataUseCase) Execute(csvFile string) error {
 	uc.logger.WithFields(map[string]interface{}{
 		"index": uc.indexName,
 	}).Info("Loading data into Elasticsearch")
+
 	if err := uc.elasticClient.BulkIndex(uc.indexName, places); err != nil {
 		uc.logger.WithFields(map[string]interface{}{
 			"index": uc.indexName,

@@ -11,6 +11,7 @@ type Config struct {
 	Elasticsearch ElasticsearchConfig `yaml:"elasticsearch"`
 	CSV           CSVConfig           `yaml:"csv"`
 	General       GeneralConfig       `yaml:"general"`
+	WebApp        WebAppConfig        `yaml:"web"`
 }
 
 type ElasticsearchConfig struct {
@@ -22,6 +23,11 @@ type ElasticsearchConfig struct {
 type CSVConfig struct {
 	FilePath  string `yaml:"file_path"`
 	Delimiter string `yaml:"delimiter"`
+}
+
+type WebAppConfig struct {
+	Port     string `yaml:"port"`
+	HTMLPage string `yaml:"index_page"`
 }
 
 type GeneralConfig struct {

@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"Go_Day03/internal/interfaces/logger" // Импортируем пакет с интерфейсом
+	"Go_Day03/internal/interfaces/logger"
 
 	"github.com/sirupsen/logrus"
 )
@@ -10,7 +10,7 @@ type LogrusLogger struct {
 	logger *logrus.Logger
 }
 
-func NewLogrusLogger() *LogrusLogger {
+func NewLogrusLogger() logger.Logger {
 	l := logrus.New()
 	l.SetFormatter(&logrus.JSONFormatter{})
 	l.SetLevel(logrus.InfoLevel)
@@ -46,5 +46,7 @@ func (l *LogrusLogger) Fatalf(format string, args ...interface{}) {
 }
 
 func (l *LogrusLogger) WithFields(fields map[string]interface{}) logger.Logger {
-	return &LogrusLogger{logger: l.logger.WithFields(fields).Logger}
+	// Обернем результат в новый LogrusLogger
+	entry := l.logger.WithFields(logrus.Fields(fields))
+	return &LogrusLogger{logger: entry.Logger}
 }

@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Places</title>
+    <meta name="description" content="">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+
+        h5 {
+            color: #333;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        li {
+            background: #fff;
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+
+        .pagination a {
+            text-decoration: none;
+            color: #007bff;
+            padding: 8px 16px;
+            margin: 0 4px;
+            border: 1px solid #007bff;
+            border-radius: 4px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        .pagination a:hover {
+            background-color: #007bff;
+            color: white;
+            transform: scale(1.05);
+        }
+
+        .pagination a.disabled {
+            color: #ccc;
+            border-color: #ccc;
+            pointer-events: none;
+        }
+
+        .page-info {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <h5>Total: {{.Total}}</h5>
+    <ul>
+        {{range .Places}}
+        <li>
+            <div><strong>{{.Name}}</strong></div>
+            <div>{{.Address}}</div>
+            <div>{{.Phone}}</div>
+        </li>
+        {{end}}
+    </ul>
+    <div class="pagination">
+        {{if gt .Page 1}}
+        <a href="/?page={{.PrevPage}}">← Previous</a>
+        {{else}}
+        <a class="disabled">← Previous</a>
+        {{end}}
+
+        {{if lt .Page .LastPage}}
+        <a href="/?page={{.NextPage}}">Next →</a>
+        {{else}}
+        <a class="disabled">Next →</a>
+        {{end}}
+
+        {{if lt .Page .LastPage}}
+        <a href="/?page={{.LastPage}}">Last ⏭</a>
+        {{else}}
+        <a href="/?page=1">⏮ First</a>
+        {{end}}
+    </div>
+    <div class="page-info">
+        Page {{.Page}} of {{.LastPage}}
+    </div>
+</body>
+
+</html>

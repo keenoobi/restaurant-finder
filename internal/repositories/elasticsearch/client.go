@@ -2,7 +2,7 @@ package elasticsearch
 
 import (
 	"Go_Day03/internal/entities"
-	"Go_Day03/internal/logger"
+	"Go_Day03/internal/interfaces/logger"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -17,10 +17,10 @@ import (
 
 type Client struct {
 	es     *elasticsearch.Client
-	logger *logger.LogrusLogger
+	logger logger.Logger
 }
 
-func NewClient(address string, logger *logger.LogrusLogger) (*Client, error) {
+func NewClient(address string, logger logger.Logger) (*Client, error) {
 	cfg := elasticsearch.Config{
 		Addresses: []string{address},
 	}
@@ -165,4 +165,58 @@ func (c *Client) BulkIndex(indexName string, places []entities.Place) error {
 	}
 
 	return nil
+}
+
+func (c *Client) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+		"size": limit,
+		"from": offset,
+	}
+
+	queryJSON, err := json.Marshal(query)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to serialize query: %s", err)
+	}
+
+	req := esapi.SearchRequest{
+		Index: []string{"places"},
+		Body:  strings.NewReader(string(queryJSON)),
+	}
+
+	res, err := req.Do(context.Background(), c.es)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to execute search request: %s", err)
+	}
+	defer res.Body.Close()
+
+	if res.IsError() {
+		return nil, 0, fmt.Errorf("error in response: %s", res.String())
+	}
+
+	var result map[string]interface{}
+	if err := json.NewDecoder(res.Body).Decode(&result); err != nil {
+		return nil, 0, fmt.Errorf("failed to decode response: %s", err)
+	}
+
+	hits := result["hits"].(map[string]interface{})["hits"].([]interface{})
+	total := int(result["hits"].(map[string]interface{})["total"].(map[string]interface{})["value"].(float64))
+
+	var places []entities.Place
+	for _, hit := range hits {
+		source := hit.(map[string]interface{})["_source"]
+		var place entities.Place
+		placeJSON, err := json.Marshal(source)
+		if err != nil {
+			return nil, 0, fmt.Errorf("failed to serialize place: %s", err)
+		}
+		if err := json.Unmarshal(placeJSON, &place); err != nil {
+			return nil, 0, fmt.Errorf("failed to deserialize place: %s", err)
+		}
+		places = append(places, place)
+	}
+
+	return places, total, nil
 }
