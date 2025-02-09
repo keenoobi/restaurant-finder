@@ -103,3 +103,51 @@ func HandlePlacesAPI(storeClient store.Store) http.HandlerFunc {
 		}
 	}
 }
+
+func HandleRecommendRequest(storeClient store.Store) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		latStr := r.URL.Query().Get("lat")
+		lonStr := r.URL.Query().Get("lon")
+
+		lat, err := strconv.ParseFloat(latStr, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Invalid 'lat' value: '%s'", latStr),
+			})
+			return
+		}
+
+		lon, err := strconv.ParseFloat(lonStr, 64)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Invalid 'lon' value: '%s'", lonStr),
+			})
+			return
+		}
+
+		places, err := storeClient.GetClosestPlaces(lat, lon, 3)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Failed to get closest places: %s", err),
+			})
+			return
+		}
+
+		response := map[string]interface{}{
+			"name":   "Recommendation",
+			"places": places,
+		}
+
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Failed to encode response: %s", err),
+			})
+		}
+	}
+}

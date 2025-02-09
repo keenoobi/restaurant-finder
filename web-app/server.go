@@ -14,6 +14,8 @@ func StartServer(cfg *config.Config, logger logger.Logger, storeClient store.Sto
 
 	http.HandleFunc("/api/places", HandlePlacesAPI(storeClient))
 
+	http.HandleFunc("/api/recommend", HandleRecommendRequest(storeClient))
+
 	logger.Info(fmt.Sprintf("Starting server on %s", cfg.WebApp.Port))
 	if err := http.ListenAndServe(cfg.WebApp.Port, nil); err != nil {
 		return fmt.Errorf("failed to start server: %s", err)

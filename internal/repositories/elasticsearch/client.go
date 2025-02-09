@@ -167,15 +167,8 @@ func (c *Client) BulkIndex(indexName string, places []entities.Place) error {
 	return nil
 }
 
-func (c *Client) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
-	query := map[string]interface{}{
-		"query": map[string]interface{}{
-			"match_all": map[string]interface{}{},
-		},
-		"size": limit,
-		"from": offset,
-	}
-
+// executeSearch выполняет поиск в Elasticsearch и возвращает список мест
+func (c *Client) executeSearch(query map[string]interface{}) ([]entities.Place, int, error) {
 	queryJSON, err := json.Marshal(query)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to serialize query: %s", err)
@@ -219,4 +212,40 @@ func (c *Client) GetPlaces(limit int, offset int) ([]entities.Place, int, error)
 	}
 
 	return places, total, nil
+}
+
+func (c *Client) GetPlaces(limit int, offset int) ([]entities.Place, int, error) {
+	query := map[string]interface{}{
+		"query": map[string]interface{}{
+			"match_all": map[string]interface{}{},
+		},
+		"size": limit,
+		"from": offset,
+	}
+
+	return c.executeSearch(query)
+}
+
+func (c *Client) GetClosestPlaces(lat, lon float64, limit int) ([]entities.Place, error) {
+	query := map[string]interface{}{
+		"size": limit,
+		"sort": []map[string]interface{}{
+			{
+				"_geo_distance": map[string]interface{}{
+					"location": map[string]float64{
+						"lat": lat,
+						"lon": lon,
+					},
+					"order":           "asc",
+					"unit":            "km",
+					"mode":            "min",
+					"distance_type":   "arc",
+					"ignore_unmapped": true,
+				},
+			},
+		},
+	}
+
+	places, _, err := c.executeSearch(query)
+	return places, err
 }
