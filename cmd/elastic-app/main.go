@@ -2,7 +2,7 @@ package main
 
 import (
 	"Go_Day03/internal/config"
-	"Go_Day03/internal/logger"
+	"Go_Day03/internal/mylogrus"
 	"Go_Day03/internal/repositories/elasticsearch"
 	"Go_Day03/internal/usecases"
 	"Go_Day03/internal/utils"
@@ -14,7 +14,7 @@ func main() {
 	configPath := flag.String("config", "configs/config.yaml", "Path to the config file")
 	flag.Parse()
 
-	logger := logger.NewLogrusLogger()
+	logger := mylogrus.New()
 
 	cfg, err := config.LoadConfig(*configPath)
 	if err != nil {
