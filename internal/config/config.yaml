@@ -25,3 +25,7 @@ csv:
 general:
   batch_size: 1000
   log_level: "info"
+
+jwt:
+  secret: "secret-key-omg"
+  expiration: 86400

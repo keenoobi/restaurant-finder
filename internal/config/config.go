@@ -12,6 +12,7 @@ type Config struct {
 	CSV           CSVConfig           `yaml:"csv"`
 	General       GeneralConfig       `yaml:"general"`
 	WebApp        WebAppConfig        `yaml:"web"`
+	JWT           JWTConfig           `yaml:"jwt"`
 }
 
 type ElasticsearchConfig struct {
@@ -33,6 +34,11 @@ type WebAppConfig struct {
 type GeneralConfig struct {
 	BatchSize int    `yaml:"batch_size"`
 	LogLevel  string `yaml:"log_level"`
+}
+
+type JWTConfig struct {
+	Secret     string `yaml:"secret"`
+	Expiration int64  `yaml:"expiration"`
 }
 
 func LoadConfig(path string) (*Config, error) {

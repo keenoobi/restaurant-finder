@@ -14,7 +14,11 @@ func StartServer(cfg *config.Config, logger logger.Logger, storeClient store.Sto
 
 	http.HandleFunc("/api/places", HandlePlacesAPI(storeClient))
 
-	http.HandleFunc("/api/recommend", HandleRecommendRequest(storeClient))
+	// Регистрируем защищенный обработчик для поиска ближайших ресторанов
+	http.HandleFunc("/api/recommend", JWTMiddleware(cfg, HandleRecommendRequest(storeClient)))
+
+	// Регистрируем обработчик для генерации токена
+	http.HandleFunc("/api/get_token", HandleGetToken(cfg))
 
 	logger.Info(fmt.Sprintf("Starting server on %s", cfg.WebApp.Port))
 	if err := http.ListenAndServe(cfg.WebApp.Port, nil); err != nil {

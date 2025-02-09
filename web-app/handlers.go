@@ -1,6 +1,7 @@
 package app
 
 import (
+	"Go_Day03/internal/config"
 	"Go_Day03/internal/entities"
 	"Go_Day03/internal/interfaces/store"
 	"encoding/json"
@@ -8,6 +9,9 @@ import (
 	"html/template"
 	"net/http"
 	"strconv"
+	"time"
+
+	"github.com/golang-jwt/jwt"
 )
 
 const pageSize = 10
@@ -149,5 +153,36 @@ func HandleRecommendRequest(storeClient store.Store) http.HandlerFunc {
 				"error": fmt.Sprintf("Failed to encode response: %s", err),
 			})
 		}
+	}
+}
+
+func HandleGetToken(cfg *config.Config) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Создаем claims (данные, которые будут закодированы в токене)
+		// можно менять как угодно, потом сам могу проверять эти поля, насколько понял
+		claims := jwt.MapClaims{
+			"name":  "Anatoly",
+			"admin": true,
+			"exp":   time.Now().Add(time.Second * time.Duration(cfg.JWT.Expiration)).Unix(),
+		}
+
+		// Создаем токен
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+
+		// Подписываем токен с использованием секретного ключа
+		tokenString, err := token.SignedString([]byte(cfg.JWT.Secret))
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+			json.NewEncoder(w).Encode(map[string]string{
+				"error": fmt.Sprintf("Failed to generate token: %s", err),
+			})
+			return
+		}
+
+		// Возвращаем токен в JSON-ответе
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{
+			"token": tokenString,
+		})
 	}
 }
