@@ -163,3 +163,12 @@ Authorization: Bearer <ваш_токен>
 ```bash
 curl -X GET "http://localhost:8888/api/places?page=1"
 ```
+## Стек технологий
+
+- **Язык**: Go
+- **База данных**: Elasticsearch
+- **Веб-фреймворк**: Стандартная библиотека Go (net/http)
+- **Аутентификация**: JWT
+- **Логирование**: Logrus
+- **Конфигурация**: YAML-файлы
+- **Контейнеризация**: Docker, Docker Compose
