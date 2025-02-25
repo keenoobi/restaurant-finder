@@ -1,12 +1,14 @@
 .PHONY: all build elastic-up elastic-down load-data run start stop clean test help
 
 # Переменные
-BIN_DIR=bin
-CMD_DIR=cmd
+BIN_DIR=./bin
+CMD_DIR=./cmd
 WEB_APP_BIN=$(BIN_DIR)/web-app
 ELASTIC_APP_BIN=$(BIN_DIR)/elastic-app
 CONFIG_PATH=internal/config/config.yaml
 DOCKER_COMPOSE_FILE=docker-compose.yml
+ELASTIC_URL=http://localhost:9200
+
 
 # Цели по умолчанию
 all: build
@@ -22,17 +24,26 @@ build:
 # Запуск Elasticsearch через Docker Compose
 elastic-up:
 	@echo "Запуск Elasticsearch..."
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) up -d
+	@docker compose -f $(DOCKER_COMPOSE_FILE) up -d
 	@echo "Elasticsearch запущен."
 
 # Остановка Elasticsearch
 elastic-down:
 	@echo "Остановка Elasticsearch..."
-	@docker-compose -f $(DOCKER_COMPOSE_FILE) down
+	@docker compose -f $(DOCKER_COMPOSE_FILE) down -v
 	@echo "Elasticsearch остановлен."
 
+# Команда для ожидания, что Elasticsearch полностью запустился
+wait-for-elastic:
+	@echo "Ожидание запуска Elasticsearch..."
+	@until curl -s $(ELASTIC_URL) > /dev/null; do \
+		echo "Elasticsearch не доступен, повторная попытка через 5 секунд..."; \
+		sleep 5; \
+	done
+	@echo "Elasticsearch запущен и доступен."
+
 # Загрузка данных в Elasticsearch
-load-data: build elastic-up
+load-data: build elastic-up wait-for-elastic
 	@echo "Загрузка данных в Elasticsearch..."
 	@$(ELASTIC_APP_BIN) -config $(CONFIG_PATH)
 	@echo "Данные загружены."
@@ -43,7 +54,7 @@ run: build
 	@$(WEB_APP_BIN) -config $(CONFIG_PATH)
 
 # Запуск всех сервисов (Elasticsearch + веб-приложение)
-start: elastic-up run
+start: elastic-up build load-data run
 
 # Остановка всех сервисов
 stop: elastic-down
